@@ -2,7 +2,9 @@ from ..interpreter import ConditionBase
 from ..exceptions import CommandSyntaxError
 
 from wpilib import Timer
-        
+
+from typing import Any
+
 class TimerCondition(ConditionBase):
     """Expects the Timer to be given from the getter. Note that the Timer
     must be declared outside the getter, and the getter should just return a reference.
@@ -30,10 +32,26 @@ class TimerCondition(ConditionBase):
             return True
         return False
 
-    @classmethod
-    def make_timer(self) -> ConditionTimer:
+    @staticmethod
+    def make_timer(cls) -> ConditionTimer:
         """Convenience constructor for a singleton Timer source. Handy as the source for 
         for a TimerCondition's test.
         """
         return TimerCondition.ConditionTimer()    
+
+    @staticmethod
+    def validate_arguments(args: list[str]) -> bool:
+        try:
+            assert 1 <= len(args) <= 2
+            float(args[0])
+            if len(args) == 2:
+                assert args[1] == "second" or args[1] == "seconds"
+        except (ValueError, AssertionError):
+            return False
+        return True
+
+    @staticmethod
+    def parse_arguments(args: list[str]) -> list[Any]:
+        return [float[args[0]]]
+
 

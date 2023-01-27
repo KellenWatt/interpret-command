@@ -1,9 +1,10 @@
 from ..interpreter import ConditionBase
 from ..exceptions import CommandSyntaxError
-
 import commands.interpreter
 
 import commands2
+
+from typing import Any
 
 class BooleanCondition(ConditionBase):
     @staticmethod
@@ -11,6 +12,15 @@ class BooleanCondition(ConditionBase):
         if len(tokens) != 0:
             raise CommandSyntaxError("No other arguments allowed. Given: {}".format(tokens))
         return input
+    
+    @staticmethod
+    def parse_arguments(args: list[str]) -> list[Any]:
+        return []
+    
+    @staticmethod
+    def validate_arguments(args: list[str]) -> bool:
+        return len(args) == 0
+        
 
 class TrueCondition(BooleanCondition):
     @staticmethod

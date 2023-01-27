@@ -1,4 +1,3 @@
-import wpilib
 import commands2 as commands
 import itertools
 
@@ -30,6 +29,14 @@ class ConditionBase:
     @staticmethod
     def test(input: Any, *tokens: str) -> bool:
         raise NotImplementedError()
+    
+    @staticmethod
+    def parse_arguments(args: list[str]) -> list[Any]:
+        return args
+
+    @staticmethod
+    def validate_arguments(args: list[str]) -> bool:
+        return True
 
 class ModularCommand(commands.CommandBase):
     """Base class for Commands accepted by InterpretCommand.
@@ -39,6 +46,7 @@ class ModularCommand(commands.CommandBase):
 
     `validate_arguments` is useful for sanity-checking arguments before execution.
     """
+    @staticmethod
     def parse_arguments(args: list[str]) -> list[Any]:
         """Parse arguments provided by the interpreter.
 
@@ -54,6 +62,7 @@ class ModularCommand(commands.CommandBase):
         """
         raise NotImplementedError()
     
+    @staticmethod
     def validate_arguments(args: list[str]) -> bool:
         """Check that given arguments are valid. Returns True by default.
 
@@ -70,6 +79,9 @@ class CompiledInstruction:
 
     def hasCondition(self) -> bool:
         return self.condition is not None
+    
+    def hasContinuousCondition(self) -> bool:
+        return self.condition is not None and self.condition._is_continuous()
 
 
 
@@ -105,7 +117,6 @@ class InterpretCommand(commands.CommandBase):
     jit_compiled: bool
 
     step: int
-    current_command: CompiledInstruction
     command_sequence: list[CompiledInstruction]
 
     def __init__(self, requirements: list[commands.SubsystemBase] = []) -> None:
@@ -144,28 +155,38 @@ class InterpretCommand(commands.CommandBase):
         self.condition_set[keyword] = (condition, getter)
 
     
-    def check_instruction(self, inst) -> None:
+    def check_instruction(self, inst: str) -> None:
         """Checks if an instruction has been registered. If it hasn't, raises an InstructionNotFoundError. 
         
         If the associated instruction exists, and is a subclass of ModularCommand, the arguments in the 
         instruction will be validated, according the class' implementation of `validate_arguments`.
         """
         if " if " in inst:
-            instruction = inst.split(" if ")[0]
+            instruction, condition = inst.split(" if ", maxsplit=1)
         elif " unless " in inst:
-            instruction = inst.split(" unless ")[0]
+            instruction, condition = inst.split(" unless ", maxsplit=1)
         elif " while " in inst:
-            instruction = inst.split(" while ")[0]
+            instruction, condition = inst.split(" while ", maxsplit=1)
         elif " until " in inst:
-            instruction = inst.split(" until ")[0]
+            instruction, condition = inst.split(" until ", maxsplit=1)
         else:
-            instruction = inst
+            instruction, condition = inst, None
+
         key, *tokens = instruction.split(" ")
         if key not in self.instruction_set:
-            raise InstructionNotFoundError("'{}' is not a registered instruction".format(inst))
+            raise InstructionNotFoundError("'{}' is not a registered instruction".format(key))
+
         klass, _ = self.instruction_set[key]
-        if issubclass(klass, ModularCommand):
+        if issubclass(klass, ModularCommand): 
+            if not klass.validate_arguments(tokens):
+                raise CommandSyntaxError("'{}' is not a valid argument set for '{}'".format(tokens, klass.__name__))
+
+        if condition is not None:
+            key, *tokens = condition.split(" ")
+            if key not in self.condition_set:
+                raise InstructionNotFoundError("'{}' is not a registered condition".format(key))
             
+            klass, _ = self.condition_set[key]
             if not klass.validate_arguments(tokens):
                 raise CommandSyntaxError("'{}' is not a valid argument set for '{}'".format(tokens, klass.__name__))
     
@@ -264,6 +285,7 @@ class InterpretCommand(commands.CommandBase):
     def _compile_condition(self, condition: str, inverted: bool, type: str) -> ConditionBase:
         key, *tokens = condition.split(" ")
         klass, f = self.condition_set[key]
+        tokens = klass.parse_arguments(tokens)
         return klass(f, inverted, type, *tokens)
         
 
@@ -285,6 +307,15 @@ class InterpretCommand(commands.CommandBase):
             result = self._compile_instruction(self, inst)
             self.command_sequence.append(result)
 
+    def current_command(self) -> CompiledInstruction:
+        if self.step >= len(self.command_sequence):
+            return None
+        else:
+            return self.command_sequence[self.step]
+        
+
+    def advance(self) -> None:
+        self.step += 1
     
     def reset(self) -> None:
         """Resets the interpreter to its initial state. If the command is currently running, it is canceled.
@@ -294,42 +325,48 @@ class InterpretCommand(commands.CommandBase):
         if self.isScheduled():
             self.cancel()
 
-        self.current_command = None
-        self.step = -1
+        self.step = 0
+
 
     def initialize(self) -> None:
         pass
     
     def execute(self) -> None:
-        if self.current_command == None or self.current_command.command.isFinished():
-            self.step += 1
-            
+        if self.current_command() is None or self.current_command().command.isFinished():
+            # There's no command compiled at the current step or we've finished
             while not self.isFinished():
-                if len(self.command_sequence) > self.step:
-                    cmd = self.command_sequence[self.step]
-                else:
+                if self.current_command() is None:
                     cmd = self._compile_instruction(self.instructions[self.step])
-                    # command has to get compiled either way, but we only store it if using JIT
                     if self.jit_compiled:
                         self.command_sequence.append(cmd)
-
+                else:
+                    cmd = self.current_command()
                 if not cmd.hasCondition() or cmd.condition._result():
+                    # There isn't a condition or the condition is initially true, we proceed
                     break
-                self.step += 1
+                # otherwise, skip the instruction
+                self.advance()
             else:
-                # We are, in fact, finished
                 return
+            
+            self.current_command().command.initialize()
 
-            self.current_command = cmd
-            self.current_command.command.initialize()
 
-        self.current_command.command.execute()
-        if self.current_command.command.isFinished():
-            self.current_command.command.end(False)
+        if self.current_command().hasContinuousCondition() and not self.current_command().condition._result():
+            # End the command and advance the pointer
+            self.current_command().command.end(True)
+            self.advance()
+        else:
+            self.current_command().command.execute()
+            if self.current_command().command.isFinished():
+                self.current_command().command.end(False)
+                self.advance()
+            
+            
 
     def end(self, interrupted: bool) -> None:
-        if interrupted and self.current_command != None:
-            self.current_command.command.cancel()
+        if interrupted and self.current_command() != None:
+            self.current_command().command.cancel()
         self.reset()
 
     def isFinished(self) -> bool:

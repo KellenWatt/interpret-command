@@ -5,6 +5,7 @@ from subsystems.drive import DriveSubsystem
 
 
 class DriveCommand(ModularCommand):
+    @staticmethod
     def validate_arguments(args: list[str]) -> bool:
         try:
             assert 1 <= len(args) <= 3
@@ -17,6 +18,7 @@ class DriveCommand(ModularCommand):
             return False
         return True
 
+    @staticmethod
     def parse_arguments(args: list[str]) -> list[Any]:
         return [float(a) for a in args]
 

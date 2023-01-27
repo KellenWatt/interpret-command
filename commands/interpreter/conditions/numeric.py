@@ -1,6 +1,7 @@
 from ..interpreter import ConditionBase
 from ..exceptions import CommandSyntaxError
 
+from typing import Any
 
 class NumericComparisonCondition(ConditionBase):
     @staticmethod
@@ -17,6 +18,20 @@ class NumericComparisonCondition(ConditionBase):
             return input >= comparand
         else:
             raise CommandSyntaxError("No valid comparison found")
+    
+    @staticmethod
+    def validate_arguments(args: list[str]) -> bool:
+        try:
+            assert len(args) == 2
+            assert args[0] in ["<", ">", "<=", ">="]
+            float(args[1])
+        except (ValueError, AssertionError):
+            return False
+        return True
+    
+    @staticmethod
+    def parse_arguments(args: list[str]) -> list[Any]:
+        return [args[0], float(args[1])]
 
 class NumericEqualityCondition(ConditionBase):
     @staticmethod
@@ -29,3 +44,17 @@ class NumericEqualityCondition(ConditionBase):
             return input != comparand
         else:
             raise CommandSyntaxError("No valid comparison found")
+    
+    @staticmethod
+    def validate_arguments(args: list[str]) -> bool:
+        try:
+            assert len(args) == 2
+            assert args[0] in ["=", "==", "!=", "=/="]
+            float(args[1])
+        except (ValueError, AssertionError):
+            return False
+        return True
+    
+    @staticmethod
+    def parse_arguments(args: list[str]) -> list[Any]:
+        return [args[0], float(args[1])]

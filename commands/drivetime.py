@@ -9,7 +9,7 @@ from wpilib import Timer
 
 
 class DriveTimeCommand(interpreter.ModularCommand):
-
+    @staticmethod
     def validate_arguments(args: list[str]) -> bool:
         try:
             assert len(args) == 3 or len(args) == 5
@@ -24,7 +24,7 @@ class DriveTimeCommand(interpreter.ModularCommand):
             return False
         
         return True
-            
+    @staticmethod
     def parse_arguments(args: list[str]) -> list[Any]:
         if len(args) == 3:
             return [float(args[1])]
