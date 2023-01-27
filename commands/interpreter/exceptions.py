@@ -7,5 +7,8 @@ class InstructionNotFoundError(Exception):
 class CommandSyntaxError(Exception):
     """Raised when a ModularCommand does not have valid arguments."""
 
-class EmptyDispatchError(Exception):
+class DispatcherError(Exception):
+    """Raised when there is a generic problem in a Dispatcher"""
+
+class EmptyDispatchError(DispatcherError):
     """Raised when a DispatcherBase is instantiated directly, without being subclassed."""

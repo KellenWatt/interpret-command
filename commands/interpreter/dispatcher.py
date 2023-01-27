@@ -1,7 +1,7 @@
 import commands2
 from typing import Any, Type
 
-from .exceptions import EmptyDispatchError
+from .exceptions import EmptyDispatchError, DispatcherError
 from .interpreter import ModularCommand
 
 class DispatcherBase(commands2.CommandBase):
@@ -23,13 +23,21 @@ class DispatcherBase(commands2.CommandBase):
     branches: dict[str, tuple[Type[commands2.CommandBase], list[Any]]]
     target: commands2.CommandBase
 
+    default_branch: tuple[Type[commands2.CommandBase], list[Any]]
+
     # Any requirements as parameters must be handled in subclasses
     def __init__(self, branch: str, *tokens: Any) -> None:
-        if len(self.branches) == 0:
+        if not hasattr(self, "default_branch") and len(self.branches) == 0:
             raise EmptyDispatchError("Dispatcher has no branches to target")
 
-        klass, args = self.branches[branch]
-
+        if branch in self.branches:
+            klass, args = self.branches[branch]
+        elif hasattr(self, "default_branch"):
+            klass, args = self.default_branch
+            args = [branch] + args
+        else:
+            raise DispatcherError("'{}' is not a valid dispatch target".format(branch))
+        
         if issubclass(klass, ModularCommand):
             tokens = klass.parse_arguments(tokens)
         self.target = klass(*args, *tokens)
@@ -41,6 +49,12 @@ class DispatcherBase(commands2.CommandBase):
         if not hasattr(self, "branches"):
             self.branches = {}
         self.branches[key] = (command, list(args))
+    
+    def register_default(self, command: Type[commands2.CommandBase], *args: Any) -> "DispatcherBase":
+        """Sets the command to be dispatched to if none of the other branches match. Useful for elegant fallback, or 
+        for setting a reasonable base behaviour.
+        """
+        self.default_branch = (command, args)
 
     def initialize(self) -> None:
         self.target.initialize()
