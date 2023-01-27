@@ -1,4 +1,4 @@
 *.pyc
-pycache
+__pycache__
 .deploy_cfg
 .installer_config
