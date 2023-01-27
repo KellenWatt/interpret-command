@@ -11,18 +11,21 @@ class ConditionBase:
     getter: Callable
     tokens: tuple[str]
     invert: bool
-    def __init__(self, getter: Callable[[], Any], invert: bool, type: bool, *tokens: str):
+    def __init__(self, getter: Callable[[], Any], invert: bool, type: str, *tokens: str):
         self.getter = getter
         self.tokens = tokens
         self.invert = invert
-        self.continuous = type
+        self.type = type
 
     def _result(self) -> bool:
         res = self.test(self.getter(), *self.tokens)
         return (res and not self.invert) or (not res and self.invert)
 
     def _is_continuous(self) -> bool:
-        return self.type
+        return self.type == "continuous"
+
+    def _is_initial(self) -> bool:
+        return self.type == "initial"
 
     @staticmethod
     def test(input: Any, *tokens: str) -> bool:
@@ -222,7 +225,7 @@ class InterpretCommand(commands.CommandBase):
 
     def _compile_instruction(self, instruction: str) -> CompiledInstruction:
         inverted = False
-        continuous = False
+        condition_type = "initial"
         if " if " in instruction:
             inst, *condition = instruction.split(" if ", maxsplit=1)
         elif " unless " in instruction:
@@ -230,11 +233,11 @@ class InterpretCommand(commands.CommandBase):
             inverted = True
         elif " while " in instruction:
             inst, *condition = instruction.split(" while ", maxsplit=1)
-            continuous = True
+            condition_type = "continuous"
         elif " until " in instruction:
             inst, *condition = instruction.split(" until ", maxsplit=1)
+            condition_type = "continuous"
             inverted = True
-            continuous = True
         else:
             inst, condition = instruction, None
 
@@ -243,7 +246,7 @@ class InterpretCommand(commands.CommandBase):
         cond = None
         if condition != None and len(condition) != 0:
             if len(condition) != 0:
-                cond = self._compile_condition(*condition, inverted, continuous)
+                cond = self._compile_condition(*condition, inverted, condition_type)
             else:
                 raise CommandSyntaxError("Conditional does not have a condition")
 
@@ -258,10 +261,10 @@ class InterpretCommand(commands.CommandBase):
         return klass(*args, *tokens)
 
 
-    def _compile_condition(self, condition: str, inverted: bool, continuous: str) -> ConditionBase:
+    def _compile_condition(self, condition: str, inverted: bool, type: str) -> ConditionBase:
         key, *tokens = condition.split(" ")
         klass, f = self.condition_set[key]
-        return klass(f, inverted, continuous, *tokens)
+        return klass(f, inverted, type, *tokens)
         
 
     def compile(self) -> None:
@@ -294,22 +297,12 @@ class InterpretCommand(commands.CommandBase):
         self.current_command = None
         self.step = -1
 
-    # @property
-    # def current_command(self) -> CompiledInstruction:
-    #     if self.step >= len(self.command_sequence):
-    #         return None
-        
-    #     return self.command_sequence[self.step]
-    
-    def next_step(self) -> None:
-        self.step += 1
-
     def initialize(self) -> None:
         pass
     
     def execute(self) -> None:
         if self.current_command == None or self.current_command.command.isFinished():
-            self.next_step()
+            self.step += 1
             
             while not self.isFinished():
                 if len(self.command_sequence) > self.step:
@@ -322,7 +315,7 @@ class InterpretCommand(commands.CommandBase):
 
                 if not cmd.hasCondition() or cmd.condition._result():
                     break
-                self.next_step
+                self.step += 1
             else:
                 # We are, in fact, finished
                 return
