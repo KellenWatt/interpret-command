@@ -8,7 +8,7 @@ class DriveCommand(ModularCommand):
     @staticmethod
     def validate_arguments(args: list[str]) -> bool:
         try:
-            assert 1 <= len(args) <= 3
+            assert len(args) >= 1 and len(args) <= 3
             float(args[0])
             if len(args) == 2:
                 float(args[1])

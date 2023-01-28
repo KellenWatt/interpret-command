@@ -19,6 +19,7 @@ class DriveDispatcher(DispatcherBase):
     def __init__(self, subsystem: DriveSubsystem, *args):
         self.register_target("forward", DriveTimeCommand, subsystem)
         self.register_target("reverse", DriveTimeReverseCommand, subsystem)
+        self.register_default(DriveCommand, subsystem)
 
         super().__init__(*args)
 
@@ -39,8 +40,7 @@ class InterpretRobot(wpilib.TimedRobot):
 
         self.responsive_command = InterpretCommand()
         self.responsive_command.register("print", commands2.PrintCommand)
-        # self.responsive_command.register("drive", DriveDispatcher, self.drive_subsystem)
-        self.responsive_command.register("drive", DriveCommand, self.drive_subsystem)
+        self.responsive_command.register("drive", DriveDispatcher, self.drive_subsystem)
         self.responsive_command.register("time", commands2.InstantCommand, lambda: print(self.timer.get()))
 
         self.responsive_command.register_condition("elapsed", TimerCondition, TimerCondition.make_timer())

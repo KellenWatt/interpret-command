@@ -34,7 +34,7 @@ class DispatcherBase(commands2.CommandBase):
             klass, args = self.branches[branch]
         elif hasattr(self, "default_branch"):
             klass, args = self.default_branch
-            args = [branch] + args
+            tokens = [branch] + list(tokens)
         else:
             raise DispatcherError("'{}' is not a valid dispatch target".format(branch))
         

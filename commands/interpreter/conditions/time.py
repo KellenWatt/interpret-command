@@ -24,7 +24,7 @@ class TimerCondition(ConditionBase):
 
     @staticmethod
     def test(input: Timer, *tokens: str) -> bool:
-        time = float[tokens[0]]
+        time = float(tokens[0])
         input.start()
         if input.hasElapsed(time):
             input.stop()
@@ -33,7 +33,7 @@ class TimerCondition(ConditionBase):
         return False
 
     @staticmethod
-    def make_timer(cls) -> ConditionTimer:
+    def make_timer() -> ConditionTimer:
         """Convenience constructor for a singleton Timer source. Handy as the source for 
         for a TimerCondition's test.
         """
@@ -52,6 +52,6 @@ class TimerCondition(ConditionBase):
 
     @staticmethod
     def parse_arguments(args: list[str]) -> list[Any]:
-        return [float[args[0]]]
+        return [float(args[0])]
 
 

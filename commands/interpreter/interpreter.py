@@ -10,21 +10,19 @@ class ConditionBase:
     getter: Callable
     tokens: tuple[str]
     invert: bool
-    def __init__(self, getter: Callable[[], Any], invert: bool, type: str, *tokens: str):
+    def __init__(self, getter: Callable[[], Any], invert: bool, continuous: bool, *tokens: str):
         self.getter = getter
         self.tokens = tokens
         self.invert = invert
-        self.type = type
+        self.continuous = continuous
 
     def _result(self) -> bool:
         res = self.test(self.getter(), *self.tokens)
-        return (res and not self.invert) or (not res and self.invert)
+        return bool(res) != self.invert
 
     def _is_continuous(self) -> bool:
-        return self.type == "continuous"
+        return self.continuous
 
-    def _is_initial(self) -> bool:
-        return self.type == "initial"
 
     @staticmethod
     def test(input: Any, *tokens: str) -> bool:
@@ -81,7 +79,7 @@ class CompiledInstruction:
         return self.condition is not None
     
     def hasContinuousCondition(self) -> bool:
-        return self.condition is not None and self.condition._is_continuous()
+        return self.hasCondition() and self.condition._is_continuous()
 
 
 
@@ -208,7 +206,8 @@ class InterpretCommand(commands.CommandBase):
         `compile` after loading the program.
         """
         if self.isScheduled():
-            raise ExecutionError("Can't set a new instruction set when the interpreter is running")
+            # raise ExecutionError("Can't set a new instruction set when the interpreter is running")
+            self.cancel()
         
         if callable(instructions):
             instructions = instructions()
@@ -225,6 +224,8 @@ class InterpretCommand(commands.CommandBase):
 
         for inst in self.instructions:
             self.check_instruction(inst)
+
+        self.command_sequence.clear()
 
         if compile:
             self.compile()
@@ -246,7 +247,7 @@ class InterpretCommand(commands.CommandBase):
 
     def _compile_instruction(self, instruction: str) -> CompiledInstruction:
         inverted = False
-        condition_type = "initial"
+        continuous = False
         if " if " in instruction:
             inst, *condition = instruction.split(" if ", maxsplit=1)
         elif " unless " in instruction:
@@ -254,10 +255,10 @@ class InterpretCommand(commands.CommandBase):
             inverted = True
         elif " while " in instruction:
             inst, *condition = instruction.split(" while ", maxsplit=1)
-            condition_type = "continuous"
+            continuous = True
         elif " until " in instruction:
             inst, *condition = instruction.split(" until ", maxsplit=1)
-            condition_type = "continuous"
+            continuous = True
             inverted = True
         else:
             inst, condition = instruction, None
@@ -267,7 +268,7 @@ class InterpretCommand(commands.CommandBase):
         cond = None
         if condition != None and len(condition) != 0:
             if len(condition) != 0:
-                cond = self._compile_condition(*condition, inverted, condition_type)
+                cond = self._compile_condition(*condition, inverted, continuous)
             else:
                 raise CommandSyntaxError("Conditional does not have a condition")
 
