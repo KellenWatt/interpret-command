@@ -1,10 +1,13 @@
 import commands2 as commands
 import itertools
+import re
 
 from typing import Callable, Type, Any
 from dataclasses import dataclass
 
 from .exceptions import *
+from .parsers import *
+
 
 class ConditionBase:
     getter: Callable
@@ -82,6 +85,56 @@ class CompiledInstruction:
         return self.hasCondition() and self.condition._is_continuous()
 
 
+def _tokenize(instruction: str) -> list[str]:
+    tokens = []
+    token = ""
+    quote = None
+    for c in instruction:
+        if not quote and c == " ":
+            if len(token) != 0:
+                tokens.append(token)
+            token = ""
+            continue
+        if c == "\"" or c == "'":
+            if quote is None:
+                quote = c
+                continue
+            if quote == c:
+                quote = None
+                continue
+        token += c
+    if quote is not None:
+        token = quote + token
+        # alternatively
+        # raise TokenizingError("No matching quote ({})".format(quote))
+    tokens.append(token)
+    return tokens
+
+
+def _split_instruction(instruction: str) -> tuple[str, tuple[str, str] | None]:
+    if " if " in instruction:
+        command, *condition = instruction.split(" if ", maxsplit=1)
+        if len(condition) == 0:
+            condition = ""
+        return command, ("if", condition)
+    elif " unless " in instruction:
+        command, *condition = instruction.split(" unless ", maxsplit=1)
+        if len(condition) == 0:
+            condition = ""
+        return command, ("unless", condition)
+    elif " while " in instruction:
+        command, *condition = instruction.split(" while ", maxsplit=1)
+        if len(condition) == 0:
+            condition = ""
+        return command, ("while", condition)
+    elif " until " in instruction:
+        command, *condition = instruction.split(" until ", maxsplit=1)
+        if len(condition) == 0:
+            condition = ""
+        return command, ("until", condition)
+    else:
+        return instruction, None
+    
 
 class InterpretCommand(commands.CommandBase):
     """A robot command that allows for modular execution of sub-commands.
@@ -117,8 +170,11 @@ class InterpretCommand(commands.CommandBase):
     step: int
     command_sequence: list[CompiledInstruction]
 
-    def __init__(self, requirements: list[commands.SubsystemBase] = []) -> None:
+    def __init__(self, requirements: list[commands.SubsystemBase] = [], parser: Callable[[str], Any] = identity_parser) -> None:
         super().__init__()
+
+        self.parser = parser
+
         self.instruction_set = {}
         self.condition_set = {}
         self.instructions = []
@@ -159,18 +215,11 @@ class InterpretCommand(commands.CommandBase):
         If the associated instruction exists, and is a subclass of ModularCommand, the arguments in the 
         instruction will be validated, according the class' implementation of `validate_arguments`.
         """
-        if " if " in inst:
-            instruction, condition = inst.split(" if ", maxsplit=1)
-        elif " unless " in inst:
-            instruction, condition = inst.split(" unless ", maxsplit=1)
-        elif " while " in inst:
-            instruction, condition = inst.split(" while ", maxsplit=1)
-        elif " until " in inst:
-            instruction, condition = inst.split(" until ", maxsplit=1)
-        else:
-            instruction, condition = inst, None
+        instruction, condition = _split_instruction(inst)
+        if condition is not None:
+            condition = condition[1]
 
-        key, *tokens = instruction.split(" ")
+        key, *tokens = _tokenize(instruction)
         if key not in self.instruction_set:
             raise InstructionNotFoundError("'{}' is not a registered instruction".format(key))
 
@@ -180,7 +229,7 @@ class InterpretCommand(commands.CommandBase):
                 raise CommandSyntaxError("'{}' is not a valid argument set for '{}'".format(tokens, klass.__name__))
 
         if condition is not None:
-            key, *tokens = condition.split(" ")
+            key, *tokens = _tokenize(condition)
             if key not in self.condition_set:
                 raise InstructionNotFoundError("'{}' is not a registered condition".format(key))
             
@@ -248,27 +297,19 @@ class InterpretCommand(commands.CommandBase):
     def _compile_instruction(self, instruction: str) -> CompiledInstruction:
         inverted = False
         continuous = False
-        if " if " in instruction:
-            inst, *condition = instruction.split(" if ", maxsplit=1)
-        elif " unless " in instruction:
-            inst, *condition = instruction.split(" unless ", maxsplit=1)
-            inverted = True
-        elif " while " in instruction:
-            inst, *condition = instruction.split(" while ", maxsplit=1)
-            continuous = True
-        elif " until " in instruction:
-            inst, *condition = instruction.split(" until ", maxsplit=1)
-            continuous = True
-            inverted = True
-        else:
-            inst, condition = instruction, None
+        inst, condition = _split_instruction(instruction)
+        if condition is not None:
+            inverted = (condition[0] == "unless" or condition[0] == "until")
+            continuous = (condition[0] == "while" or condition[0] == "until")
+            condition = condition[1]
+        
 
         cmd = self._compile_command(inst)
 
         cond = None
         if condition != None and len(condition) != 0:
             if len(condition) != 0:
-                cond = self._compile_condition(*condition, inverted, continuous)
+                cond = self._compile_condition(condition, inverted, continuous)
             else:
                 raise CommandSyntaxError("Conditional does not have a condition")
 
@@ -276,17 +317,24 @@ class InterpretCommand(commands.CommandBase):
         
     
     def _compile_command(self, command: str) -> commands.CommandBase:
-        key, *tokens = command.split(" ")
+        key, *tokens = _tokenize(command) 
+        tokens = list(filter(None, tokens))
+        
         klass, args = self.instruction_set[key]
         if issubclass(klass, ModularCommand):
             tokens = klass.parse_arguments(tokens)
+        else:
+            tokens = self.parser(tokens)
+
         return klass(*args, *tokens)
 
 
     def _compile_condition(self, condition: str, inverted: bool, type: str) -> ConditionBase:
-        key, *tokens = condition.split(" ")
+        key, *tokens = _tokenize(condition)
+        tokens = list(filter(None, tokens))
+
         klass, f = self.condition_set[key]
-        tokens = klass.parse_arguments(tokens)
+        tokens = klass.parse_arguments(self.parser(tokens))
         return klass(f, inverted, type, *tokens)
         
 

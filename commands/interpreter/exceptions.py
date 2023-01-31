@@ -7,6 +7,9 @@ class InstructionNotFoundError(Exception):
 class CommandSyntaxError(Exception):
     """Raised when a ModularCommand does not have valid arguments."""
 
+class TokenizingError(Exception):
+    """Raised when the tokenizer finds invalid syntax. Generally when missing closing quote"""
+
 class DispatcherError(Exception):
     """Raised when there is a generic problem in a Dispatcher"""
 
