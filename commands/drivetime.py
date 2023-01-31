@@ -8,7 +8,7 @@ from subsystems.drive import DriveSubsystem
 from wpilib import Timer
 
 
-class DriveTimeCommand(interpreter.ModularCommand):
+class DriveTimeCommand(interpreter.InstructionCommand):
     @staticmethod
     def validate_arguments(args: list[str]) -> bool:
         try:

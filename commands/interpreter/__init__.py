@@ -3,7 +3,7 @@ from .dispatcher import *
 
 __all__ = [
     "InterpretCommand",
-    "ModularCommand",
+    "InstructionCommand",
     "DispatcherBase",
     "Condition"
 ]

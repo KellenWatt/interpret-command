@@ -1,10 +1,10 @@
-from commands.interpreter import ModularCommand
+from commands.interpreter import InstructionCommand
 
 from typing import Any
 from subsystems.drive import DriveSubsystem
 
 
-class DriveCommand(ModularCommand):
+class DriveCommand(InstructionCommand):
     @staticmethod
     def validate_arguments(args: list[str]) -> bool:
         try:

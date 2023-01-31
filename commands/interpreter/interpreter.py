@@ -39,7 +39,7 @@ class ConditionBase:
     def validate_arguments(args: list[str]) -> bool:
         return True
 
-class ModularCommand(commands.CommandBase):
+class InstructionCommand(commands.CommandBase):
     """Base class for Commands accepted by InterpretCommand.
     Allows for instruction arguments to be handled earlier, resulting in a more predictable program.
 
@@ -224,7 +224,7 @@ class InterpretCommand(commands.CommandBase):
             raise InstructionNotFoundError("'{}' is not a registered instruction".format(key))
 
         klass, _ = self.instruction_set[key]
-        if issubclass(klass, ModularCommand): 
+        if issubclass(klass, InstructionCommand): 
             if not klass.validate_arguments(tokens):
                 raise CommandSyntaxError("'{}' is not a valid argument set for '{}'".format(tokens, klass.__name__))
 
@@ -321,7 +321,7 @@ class InterpretCommand(commands.CommandBase):
         tokens = list(filter(None, tokens))
         
         klass, args = self.instruction_set[key]
-        if issubclass(klass, ModularCommand):
+        if issubclass(klass, InstructionCommand):
             tokens = klass.parse_arguments(tokens)
         else:
             tokens = self.parser(tokens)

@@ -2,7 +2,7 @@ import commands2
 from typing import Any, Type
 
 from .exceptions import EmptyDispatchError, DispatcherError
-from .interpreter import ModularCommand
+from .interpreter import InstructionCommand
 
 class DispatcherBase(commands2.CommandBase):
     """Dispatcher class for use with `InterpretCommand`. Cannot be used directly.
@@ -38,7 +38,7 @@ class DispatcherBase(commands2.CommandBase):
         else:
             raise DispatcherError("'{}' is not a valid dispatch target".format(branch))
         
-        if issubclass(klass, ModularCommand):
+        if issubclass(klass, InstructionCommand):
             tokens = klass.parse_arguments(tokens)
         self.target = klass(*args, *tokens)
 
