@@ -112,26 +112,15 @@ def _tokenize(instruction: str) -> list[str]:
 
 
 def _split_instruction(instruction: str) -> tuple[str, tuple[str, str] | None]:
-    if " if " in instruction:
-        command, *condition = instruction.split(" if ", maxsplit=1)
-        if len(condition) == 0:
-            condition = ""
-        return command, ("if", condition)
-    elif " unless " in instruction:
-        command, *condition = instruction.split(" unless ", maxsplit=1)
-        if len(condition) == 0:
-            condition = ""
-        return command, ("unless", condition)
-    elif " while " in instruction:
-        command, *condition = instruction.split(" while ", maxsplit=1)
-        if len(condition) == 0:
-            condition = ""
-        return command, ("while", condition)
-    elif " until " in instruction:
-        command, *condition = instruction.split(" until ", maxsplit=1)
-        if len(condition) == 0:
-            condition = ""
-        return command, ("until", condition)
+    conditionals = ["if", "unless", "while", "until"]
+    for c in conditionals:
+        spaced = " " + c + " "
+        if spaced in instruction:
+            command, *condition = instruction.split(spaced, maxsplit=1)
+            if len(condition) == 0:
+                return command, (c, "")
+            else:
+                return command, (c, condition[0])
     else:
         return instruction, None
     
