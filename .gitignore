@@ -2,3 +2,5 @@
 __pycache__
 .deploy_cfg
 .installer_config
+
+release*
