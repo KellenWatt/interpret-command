@@ -5,5 +5,5 @@ __all__ = [
     "InterpretCommand",
     "InstructionCommand",
     "DispatcherBase",
-    "Condition"
+    "ConditionBase"
 ]

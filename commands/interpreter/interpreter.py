@@ -40,7 +40,7 @@ class ConditionBase:
         return True
 
 class InstructionCommand(commands.CommandBase):
-    """Base class for Commands accepted by InterpretCommand.
+    """Base class for Commands accepted by InterpretCommand. Used to implement custom instruction syntax.
     Allows for instruction arguments to be handled earlier, resulting in a more predictable program.
 
     Requires subclasses to implement `parse_arguments`.
@@ -75,6 +75,7 @@ class InstructionCommand(commands.CommandBase):
 
 @dataclass
 class CompiledInstruction:
+    """Internal class used by InterpretCommand to represent a compiled instruction (command + condition)."""
     command: commands.CommandBase
     condition: ConditionBase | None
 
@@ -345,14 +346,14 @@ class InterpretCommand(commands.CommandBase):
             result = self._compile_instruction(self, inst)
             self.command_sequence.append(result)
 
-    def current_command(self) -> CompiledInstruction:
+    def _current_instruction(self) -> CompiledInstruction:
         if self.step >= len(self.command_sequence):
             return None
         else:
             return self.command_sequence[self.step]
         
 
-    def advance(self) -> None:
+    def _advance(self) -> None:
         self.step += 1
     
     def reset(self) -> None:
@@ -370,41 +371,41 @@ class InterpretCommand(commands.CommandBase):
         pass
     
     def execute(self) -> None:
-        if self.current_command() is None or self.current_command().command.isFinished():
+        if self._current_instruction() is None or self._current_instruction().command.isFinished():
             # There's no command compiled at the current step or we've finished
             while not self.isFinished():
-                if self.current_command() is None:
+                if self._current_instruction() is None:
                     cmd = self._compile_instruction(self.instructions[self.step])
                     if self.jit_compiled:
                         self.command_sequence.append(cmd)
                 else:
-                    cmd = self.current_command()
+                    cmd = self._current_instruction()
                 if not cmd.hasCondition() or cmd.condition._result():
                     # There isn't a condition or the condition is initially true, we proceed
                     break
                 # otherwise, skip the instruction
-                self.advance()
+                self._advance()
             else:
                 return
             
-            self.current_command().command.initialize()
+            self._current_instruction().command.initialize()
 
 
-        if self.current_command().hasContinuousCondition() and not self.current_command().condition._result():
+        if self._current_instruction().hasContinuousCondition() and not self._current_instruction().condition._result():
             # End the command and advance the pointer
-            self.current_command().command.end(True)
-            self.advance()
+            self._current_instruction().command.end(True)
+            self._advance()
         else:
-            self.current_command().command.execute()
-            if self.current_command().command.isFinished():
-                self.current_command().command.end(False)
-                self.advance()
+            self._current_instruction().command.execute()
+            if self._current_instruction().command.isFinished():
+                self._current_instruction().command.end(False)
+                self._advance()
             
             
 
     def end(self, interrupted: bool) -> None:
-        if interrupted and self.current_command() != None:
-            self.current_command().command.cancel()
+        if interrupted and self._current_instruction() != None:
+            self._current_instruction().command.cancel()
         self.reset()
 
     def isFinished(self) -> bool:
