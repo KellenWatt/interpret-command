@@ -14,7 +14,9 @@ from commands.drivetimereverse import DriveTimeReverseCommand
 from commands.drive import DriveCommand
 
 from commands.interpreter.conditions.time import TimerCondition
-import commands.interpreter.conditions.boolean
+from commands.interpreter.conditions.numeric import NumericComparisonCondition
+from commands.interpreter.conditions.boolean import register_default_boolean_conditions
+register_default_boolean_conditions()
 
 class DriveDispatcher(DispatcherBase):
     def __init__(self, subsystem: DriveSubsystem, *args):
@@ -46,6 +48,7 @@ class InterpretRobot(wpilib.TimedRobot):
         self.responsive_command.register("time", commands2.InstantCommand, lambda: print(self.timer.get()))
 
         self.responsive_command.register_condition("elapsed", TimerCondition, TimerCondition.make_timer())
+        self.responsive_command.register_condition("angle", NumericComparisonCondition, self.drive_subsystem.angle)
 
         self.controller.Y().onTrue(commands2.InstantCommand(lambda: self.responsive_command.load_program(self.code_box.getString(""))))
         self.controller.start().onTrue(self.responsive_command)    
