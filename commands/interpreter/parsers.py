@@ -8,7 +8,7 @@ def identity_parser(tokens: list[str]) -> list[str]:
 
 
 
-token_converters: list[tuple[re.Pattern, Callable[[str], Any]]] = []
+_token_converters: list[tuple[re.Pattern, Callable[[str], Any]]] = []
 def register_token_type(pattern: re.Pattern, converter: Callable[[str], Any]):
     """Registers a new token type for the typed_parser. Requires a compiled regex, and some kind 
     of callable that converts the token to a value of the registered type.
@@ -17,7 +17,7 @@ def register_token_type(pattern: re.Pattern, converter: Callable[[str], Any]):
         raise TypeError("pattern must be an `re.Pattern` instance")
     if not callable(converter):
         raise TypeError("converter must be callable")
-    token_converters.append((pattern, converter))
+    _token_converters.append((pattern, converter))
 
 number = re.compile(r"^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$")
 register_token_type(number, float)
@@ -26,7 +26,7 @@ boolean = re.compile("^([tT]rue|[fF]alse)$")
 register_token_type(boolean, (lambda t: t == "true" or t == "True"))
 
 def _convert_token(token: str) -> Any:
-    for reg, conv in token_converters:
+    for reg, conv in _token_converters:
         if reg.match(token):
             return conv(token)
     
