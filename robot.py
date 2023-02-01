@@ -7,6 +7,7 @@ from wpilib import Timer
 from subsystems.drive import DriveSubsystem
 
 from commands.interpreter import InterpretCommand
+from commands.interpreter.parsers import typed_parser
 from commands.interpreter.dispatcher import DispatcherBase
 from commands.drivetime import DriveTimeCommand
 from commands.drivetimereverse import DriveTimeReverseCommand
@@ -38,8 +39,9 @@ class InterpretRobot(wpilib.TimedRobot):
         self.drive_subsystem = DriveSubsystem()
         self.controller = button.CommandXboxController(0)
 
-        self.responsive_command = InterpretCommand()
+        self.responsive_command = InterpretCommand(parser = typed_parser)
         self.responsive_command.register("print", commands2.PrintCommand)
+        self.responsive_command.register("wait", commands2.WaitCommand)
         self.responsive_command.register("drive", DriveDispatcher, self.drive_subsystem)
         self.responsive_command.register("time", commands2.InstantCommand, lambda: print(self.timer.get()))
 

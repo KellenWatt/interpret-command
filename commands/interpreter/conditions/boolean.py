@@ -33,8 +33,8 @@ class FalseCondition(BooleanCondition):
         return super(FalseCondition, FalseCondition).test(False, *tokens)
 
 old_interpreter_init = commands.interpreter.InterpretCommand.__init__
-def _register_boolean_init_(self: commands.interpreter.InterpretCommand, requirements: list[commands2.SubsystemBase] = []):
-    old_interpreter_init(self, requirements)
+def _register_boolean_init_(self: commands.interpreter.InterpretCommand, *args, **kwargs):
+    old_interpreter_init(self, *args, **kwargs)
     self.register_condition("true", TrueCondition, lambda: None)
     self.register_condition("false", FalseCondition, lambda: None)
 
