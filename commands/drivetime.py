@@ -30,6 +30,10 @@ class DriveTimeCommand(interpreter.InstructionCommand):
             return [float(args[1])]
         else:
             return [float(args[1]), float(args[4])]
+    
+    @staticmethod
+    def syntax() -> str:
+        return "for <sec> second[s] [(at|@) <speed>]"
 
     drive: DriveSubsystem
     duration: float

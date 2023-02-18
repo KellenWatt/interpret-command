@@ -58,6 +58,8 @@ class InterpretRobot(wpilib.TimedRobot):
         self.code_box = sd.getEntry("Interpreter Code")
         self.updateButton = sd.getEntry("Update")
 
+        self.controller.back().onTrue(commands2.InstantCommand(lambda: self.code_box.setString(self.responsive_command.summary())))
+
 
     def robotPeriodic(self) -> None:
         

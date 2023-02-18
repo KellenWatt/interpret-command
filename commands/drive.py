@@ -22,6 +22,10 @@ class DriveCommand(InstructionCommand):
     def parse_arguments(args: list[str]) -> list[Any]:
         return [float(a) for a in args]
 
+    @staticmethod
+    def syntax() -> str:
+        return "y | x y | x y rot"
+
     drive: DriveSubsystem
     x_speed: float
     y_speed: float

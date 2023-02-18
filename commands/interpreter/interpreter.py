@@ -1,6 +1,6 @@
 import commands2 as commands
 import itertools
-import re
+import inspect
 
 from typing import Callable, Type, Any
 from dataclasses import dataclass
@@ -71,6 +71,11 @@ class InstructionCommand(commands.CommandBase):
         before the program is run, in order to prevent any syntax errors, without compiling.
         """
         return True
+
+    @staticmethod
+    def syntax() -> str:
+        raise NotImplementedError()
+    
 
 
 @dataclass
@@ -151,7 +156,7 @@ class InterpretCommand(commands.CommandBase):
     odd bugs. Whatever you're trying to accomplish can be done by registering the other commands in the group to 
     this command, then incorporating them into your program.
     """
-    instruction_set: dict[str, tuple[commands.CommandBase, list[str]]]
+    instruction_set: dict[str, tuple[commands.CommandBase, list[Any]]]
     condition_set: dict[str, tuple[ConditionBase, Callable[[], Any]]]
     instructions: list[str]
 
@@ -193,6 +198,19 @@ class InterpretCommand(commands.CommandBase):
         reqs = [a for a in args if isinstance(a, commands.SubsystemBase)]
         self.addRequirements(reqs)
 
+    def summary(self) -> str:
+        out = []
+        for name in self.instruction_set:
+            klass, args = self.instruction_set[name]
+            print("--- generating syntax for: {}".format(klass))
+            syntax = ""
+            if issubclass(klass, InstructionCommand):
+                syntax = klass.syntax()
+            else:
+                syntax = "(builtin) {}".format(klass.__name__)
+            out.append("{}: {}".format(name, syntax))
+        return "\n".join(out)
+            
     def register_condition(self, keyword: str, condition: Type[ConditionBase], getter: Callable[[], Any]):
         if not isinstance(condition, Type):
             raise TypeError("provided condition must be in class form")
