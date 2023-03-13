@@ -165,6 +165,8 @@ class InterpretCommand(commands.CommandBase):
     step: int
     command_sequence: list[CompiledInstruction]
 
+    errors: list[Exception]
+
     def __init__(self, requirements: list[commands.SubsystemBase] = [], parser: Callable[[str], Any] = identity_parser) -> None:
         super().__init__()
 
@@ -176,6 +178,8 @@ class InterpretCommand(commands.CommandBase):
     
         self.jit_compiled = True
         self.command_sequence = []
+
+        self.errors = True
 
         self.addRequirements(requirements)
         self.reset()
@@ -192,8 +196,9 @@ class InterpretCommand(commands.CommandBase):
         set the requirements on that command, but it sets them on this InterpretCommand. Subcommands do not need to
         have requirements set, since they are implicitly set by this command.
         """
-        if not isinstance(command, Type):
-            raise TypeError("provided command must be in class form")
+        # classes are the expectation, but there's technically no reason to disallow Callables
+        # if not isinstance(command, Type):
+        #     raise TypeError("provided command must be in class form")
         self.instruction_set[keyword] = (command, args)
         reqs = [a for a in args if isinstance(a, commands.SubsystemBase)]
         self.addRequirements(reqs)
@@ -212,8 +217,9 @@ class InterpretCommand(commands.CommandBase):
         return "\n".join(out)
             
     def register_condition(self, keyword: str, condition: Type[ConditionBase], getter: Callable[[], Any]):
-        if not isinstance(condition, Type):
-            raise TypeError("provided condition must be in class form")
+        # classes are the expectation, but there's technically no reason to disallow Callables
+        # if not isinstance(condition, Type):
+        #     raise TypeError("provided condition must be in class form")
         self.condition_set[keyword] = (condition, getter)
 
     
@@ -229,21 +235,21 @@ class InterpretCommand(commands.CommandBase):
 
         key, *tokens = _tokenize(instruction)
         if key not in self.instruction_set:
-            raise InstructionNotFoundError("'{}' is not a registered instruction".format(key))
+            self.errors.append(InstructionNotFoundError("'{}' is not a registered instruction".format(key)))
 
         klass, _ = self.instruction_set[key]
         if issubclass(klass, InstructionCommand): 
             if not klass.validate_arguments(tokens):
-                raise CommandSyntaxError("'{}' is not a valid argument set for '{}'".format(tokens, klass.__name__))
+                self.errors.append(CommandSyntaxError("'{}' is not a valid argument set for '{}'".format(tokens, klass.__name__)))
 
         if condition is not None:
             key, *tokens = _tokenize(condition)
             if key not in self.condition_set:
-                raise InstructionNotFoundError("'{}' is not a registered condition".format(key))
+                self.errors.append(InstructionNotFoundError("'{}' is not a registered condition".format(key)))
             
             klass, _ = self.condition_set[key]
             if not klass.validate_arguments(tokens):
-                raise CommandSyntaxError("'{}' is not a valid argument set for '{}'".format(tokens, klass.__name__))
+                self.errors.append(CommandSyntaxError("'{}' is not a valid argument set for '{}'".format(tokens, klass.__name__)))
     
     def load_program(self, instructions: str | list[str] | Callable[[], str | list[str]], compile: bool = False, jit: bool = True) -> None:
         """Set the program to be run, performing basic syntax checking on instructions.
@@ -265,7 +271,9 @@ class InterpretCommand(commands.CommandBase):
         if self.isScheduled():
             # raise ExecutionError("Can't set a new instruction set when the interpreter is running")
             self.cancel()
-        
+
+        self.errors.clear()
+
         if callable(instructions):
             instructions = instructions()
             if not isinstance(instructions, str) and not isinstance(instructions, list):
@@ -301,6 +309,9 @@ class InterpretCommand(commands.CommandBase):
         """
         self.jit_compiled = enable
 
+    def current_program_valid(self) -> bool:
+        return len(self.errors) != 0
+
 
     def _compile_instruction(self, instruction: str) -> CompiledInstruction:
         inverted = False
@@ -319,7 +330,7 @@ class InterpretCommand(commands.CommandBase):
             if len(condition) != 0:
                 cond = self._compile_condition(condition, inverted, continuous)
             else:
-                raise CommandSyntaxError("Conditional does not have a condition")
+                self.errors.append(CommandSyntaxError("Conditional does not have a condition"))
 
         return CompiledInstruction(cmd, cond)
         
@@ -386,9 +397,14 @@ class InterpretCommand(commands.CommandBase):
 
 
     def initialize(self) -> None:
+        if not self.current_program_valid():
+            return
         pass
     
     def execute(self) -> None:
+        if not self.current_program_valid():
+            return
+
         if self._current_instruction() is None or self._current_instruction().command.isFinished():
             # There's no command compiled at the current step or we've finished
             while not self.isFinished():
@@ -422,11 +438,15 @@ class InterpretCommand(commands.CommandBase):
             
 
     def end(self, interrupted: bool) -> None:
+        if not self.current_program_valid():
+            return
         if interrupted and self._current_instruction() != None:
             self._current_instruction().command.cancel()
         self.reset()
 
     def isFinished(self) -> bool:
+        if not self.current_program_valid():
+            return True
         if len(self.command_sequence) == len(self.instructions):
             # we either pre-compiled or fully jit-compiled
             return self.step >= len(self.command_sequence)
