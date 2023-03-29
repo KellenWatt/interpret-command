@@ -4,3 +4,7 @@ __pycache__
 .installer_config
 
 release*
+
+package/dist
+package/docs/build
+package/src/interpreter_command.egg-info

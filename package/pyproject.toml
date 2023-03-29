@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "interpreter-command"
+version = "0.4.1"
+authors = [
+  { name="Kellen Watt", email="kellen@wattsoft.dev" },
+]
+dependencies = ["robotpy", "robotpy-commands-v2"]
+description = "A command interpreter engine for use with the RobotPy command-based library"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Framework :: Robot Framework :: Library",
+]
