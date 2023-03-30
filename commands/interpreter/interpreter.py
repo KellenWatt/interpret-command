@@ -179,7 +179,7 @@ class InterpretCommand(commands.CommandBase):
         self.jit_compiled = True
         self.command_sequence = []
 
-        self.errors = True
+        self.errors = []
 
         self.addRequirements(requirements)
         self.reset()
@@ -310,7 +310,7 @@ class InterpretCommand(commands.CommandBase):
         self.jit_compiled = enable
 
     def current_program_valid(self) -> bool:
-        return len(self.errors) != 0
+        return len(self.errors) == 0
 
 
     def _compile_instruction(self, instruction: str) -> CompiledInstruction:
