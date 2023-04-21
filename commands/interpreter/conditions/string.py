@@ -30,6 +30,10 @@ class StringEqualityCondition(ConditionBase):
     def parse_arguments(args: list[str]) -> list[Any]:
         return [a for a in args]
     
+    @staticmethod
+    def syntax() -> str:
+        return "<eq-op> <str>"
+    
 class StringLengthComparisonCondition(NumericComparisonCondition):
     @staticmethod
     def test(input: str, *tokens: str) -> bool:

@@ -39,6 +39,10 @@ class ConditionBase:
     def validate_arguments(args: list[str]) -> bool:
         return True
 
+    @staticmethod
+    def syntax() -> str:
+        return ""
+
 class InstructionCommand(commands.CommandBase):
     """Base class for Commands accepted by InterpretCommand. Used to implement custom instruction syntax.
     Allows for instruction arguments to be handled earlier, resulting in a more predictable program.
@@ -167,7 +171,7 @@ class InterpretCommand(commands.CommandBase):
 
     errors: list[Exception]
 
-    def __init__(self, requirements: list[commands.SubsystemBase] = [], parser: Callable[[str], Any] = identity_parser) -> None:
+    def __init__(self, requirements: list[commands.SubsystemBase] = [], parser: Callable[[str], Any] = typed_parser) -> None:
         super().__init__()
 
         self.parser = parser
@@ -203,11 +207,11 @@ class InterpretCommand(commands.CommandBase):
         reqs = [a for a in args if isinstance(a, commands.SubsystemBase)]
         self.addRequirements(reqs)
 
-    def summary(self) -> str:
+    def summarize_commands(self) -> str:
         out = []
         for name in self.instruction_set:
             klass, args = self.instruction_set[name]
-            print("--- generating syntax for: {}".format(klass))
+
             syntax = ""
             if issubclass(klass, InstructionCommand):
                 syntax = klass.syntax()
@@ -215,6 +219,21 @@ class InterpretCommand(commands.CommandBase):
                 syntax = "(builtin) {}".format(klass.__name__)
             out.append("{}: {}".format(name, syntax))
         return "\n".join(out)
+
+    def summarize_conditions(self) -> str:
+        out = []
+        for name in self.condition_set:
+            klass, args = self.condition_set[name]
+            
+            syntax = klass.syntax()
+            out.append("{}: {}".format(name, syntax))
+        return "\n".join(out)
+
+    def summary(self) -> str:
+        return "Commands:\n" +\
+        self.summarize_commands() + "\n\n" +\
+        "Conditions:\n" +\
+        self.summarize_conditions()
             
     def register_condition(self, keyword: str, condition: Type[ConditionBase], getter: Callable[[], Any]):
         # classes are the expectation, but there's technically no reason to disallow Callables
@@ -340,10 +359,9 @@ class InterpretCommand(commands.CommandBase):
         tokens = list(filter(None, tokens))
         
         klass, args = self.instruction_set[key]
+        tokens = self.parser(tokens)
         if issubclass(klass, InstructionCommand):
             tokens = klass.parse_arguments(tokens)
-        else:
-            tokens = self.parser(tokens)
 
         return klass(*args, *tokens)
 

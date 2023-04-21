@@ -33,6 +33,10 @@ class NumericComparisonCondition(ConditionBase):
     def parse_arguments(args: list[str]) -> list[Any]:
         return [args[0], float(args[1])]
 
+    @staticmethod
+    def syntax() -> str:
+        return "<cmp-op> <num>"
+
 class NumericEqualityCondition(ConditionBase):
     @staticmethod
     def test(input: float, *tokens: str) -> bool:
@@ -58,3 +62,7 @@ class NumericEqualityCondition(ConditionBase):
     @staticmethod
     def parse_arguments(args: list[str]) -> list[Any]:
         return [args[0], float(args[1])]
+    
+    @staticmethod
+    def syntax() -> str:
+        return "<eq-op> <num>"

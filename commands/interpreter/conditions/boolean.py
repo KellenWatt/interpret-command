@@ -17,6 +17,10 @@ class BooleanCondition(ConditionBase):
     @staticmethod
     def validate_arguments(args: list[str]) -> bool:
         return len(args) == 0
+    
+    @staticmethod
+    def syntax() -> str:
+        return ""
         
 
 class TrueCondition(BooleanCondition):

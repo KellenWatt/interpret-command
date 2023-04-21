@@ -8,3 +8,5 @@ release*
 package/dist
 package/docs/build
 package/src/interpreter_command.egg-info
+
+package/docs/source/generated/*

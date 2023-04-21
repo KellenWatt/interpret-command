@@ -19,9 +19,6 @@ MacOS/Linux:
 python3 install interpreter-command
 ```
 
-#### C++/Java:
-TBD when I've written the things
-
 ## Usage
 All you need to do to create an InterpretCommand is to instantiate the
 class in your language of choice, register commands to it, and 
@@ -64,6 +61,9 @@ which would print "hello\nworld", then drive the robot in the Y
 direction at 40% speed until the command is canceled, assuming
 `SomeDriveCommand` does nothing but drive continuously using its
 inputs.
+
+### Further Information
+For more information, 
 
 ## License
 This project is licensed under the MIT License. If this doesn't work for you, feel free to create an issue requesting it.

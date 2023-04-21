@@ -53,5 +53,9 @@ class TimerCondition(ConditionBase):
     @staticmethod
     def parse_arguments(args: list[str]) -> list[Any]:
         return [float(args[0])]
+    
+    @staticmethod
+    def syntax() -> str:
+        return "<n> second[s]"
 
 
