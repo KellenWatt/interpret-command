@@ -43,7 +43,7 @@ class ConditionBase:
     def syntax() -> str:
         return ""
 
-class InstructionCommand(commands.CommandBase):
+class InstructionCommand(commands.Command):
     """Base class for Commands accepted by InterpretCommand. Used to implement custom instruction syntax.
     Allows for instruction arguments to be handled earlier, resulting in a more predictable program.
 
@@ -85,7 +85,7 @@ class InstructionCommand(commands.CommandBase):
 @dataclass
 class CompiledInstruction:
     """Internal class used by InterpretCommand to represent a compiled instruction (command + condition)."""
-    command: commands.CommandBase
+    command: commands.Command
     condition: ConditionBase | None
 
     def hasCondition(self) -> bool:
@@ -135,14 +135,14 @@ def _split_instruction(instruction: str) -> tuple[str, tuple[str, str] | None]:
         return instruction, None
     
 
-class InterpretCommand(commands.CommandBase):
+class InterpretCommand(commands.Command):
     """A robot command that allows for modular execution of sub-commands.
 
     Command classes can be registered to a unique keyword, then an interpreter will parse text
     loaded into it (the 'program') into those commands, passing any additional arguments to the 
     commands to alter their behaviour.
 
-    Any class derived from CommandBase should work fine, but a special interface called ModularCommand
+    Any class derived from Command should work fine, but a special interface called ModularCommand
     has been provided that allows for additional validation and parsing during compilation.
 
     Programs can be handled in 3 different ways: pure interpretation, JIT compilation, and pre-compilation.
@@ -160,7 +160,7 @@ class InterpretCommand(commands.CommandBase):
     odd bugs. Whatever you're trying to accomplish can be done by registering the other commands in the group to 
     this command, then incorporating them into your program.
     """
-    instruction_set: dict[str, tuple[commands.CommandBase, list[Any]]]
+    instruction_set: dict[str, tuple[commands.Command, list[Any]]]
     condition_set: dict[str, tuple[ConditionBase, Callable[[], Any]]]
     instructions: list[str]
 
@@ -171,7 +171,7 @@ class InterpretCommand(commands.CommandBase):
 
     errors: list[Exception]
 
-    def __init__(self, requirements: list[commands.SubsystemBase] = [], parser: Callable[[str], Any] = typed_parser) -> None:
+    def __init__(self, requirements: list[commands.Subsystem] = [], parser: Callable[[str], Any] = typed_parser) -> None:
         super().__init__()
 
         self.parser = parser
@@ -188,9 +188,9 @@ class InterpretCommand(commands.CommandBase):
         self.addRequirements(requirements)
         self.reset()
     
-    def register(self, keyword: str, command: Type[commands.CommandBase], *args) -> None:
+    def register(self, keyword: str, command: Type[commands.Command], *args) -> None:
         """Registers a command to a keyword. Any additional arguments to the command constructor can be provided here.
-        If any of the arguments are instances of SubsystemBase, they are assumed to be requirements for that command, 
+        If any of the arguments are instances of Subsystem, they are assumed to be requirements for that command, 
         and are added to this class.
         
         Instruction is a unique word that identifies the command. For instance, to control a drivetrain, 
@@ -204,7 +204,7 @@ class InterpretCommand(commands.CommandBase):
         # if not isinstance(command, Type):
         #     raise TypeError("provided command must be in class form")
         self.instruction_set[keyword] = (command, args)
-        reqs = [a for a in args if isinstance(a, commands.SubsystemBase)]
+        reqs = [a for a in args if isinstance(a, commands.Subsystem)]
         self.addRequirements(reqs)
 
     def summarize_commands(self) -> str:
@@ -354,7 +354,7 @@ class InterpretCommand(commands.CommandBase):
         return CompiledInstruction(cmd, cond)
         
     
-    def _compile_command(self, command: str) -> commands.CommandBase:
+    def _compile_command(self, command: str) -> commands.Command:
         key, *tokens = _tokenize(command) 
         tokens = list(filter(None, tokens))
         

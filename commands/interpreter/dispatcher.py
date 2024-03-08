@@ -4,7 +4,7 @@ from typing import Any, Type
 from .exceptions import EmptyDispatchError, DispatcherError
 from .interpreter import InstructionCommand
 
-class DispatcherBase(commands2.CommandBase):
+class DispatcherBase(commands2.Command):
     """Dispatcher class for use with `InterpretCommand`. Cannot be used directly.
     
     In order to create a dispatcher, create a subclass of `DispatcherBase`, and register
@@ -20,10 +20,10 @@ class DispatcherBase(commands2.CommandBase):
     without good reason.
     """
 
-    branches: dict[str, tuple[Type[commands2.CommandBase], list[Any]]]
-    target: commands2.CommandBase
+    branches: dict[str, tuple[Type[commands2.Command], list[Any]]]
+    target: commands2.Command
 
-    default_branch: tuple[Type[commands2.CommandBase], list[Any]]
+    default_branch: tuple[Type[commands2.Command], list[Any]]
 
     # Any requirements as parameters must be handled in subclasses
     def __init__(self, branch: str, *tokens: Any) -> None:
@@ -44,13 +44,13 @@ class DispatcherBase(commands2.CommandBase):
 
         super().__init__()
 
-    def register_target(self, key: str, command: Type[commands2.CommandBase], *args: Any) -> "DispatcherBase":
+    def register_target(self, key: str, command: Type[commands2.Command], *args: Any) -> "DispatcherBase":
         """Call in the constructor of `DispatcherBase` subclasses to register Dispatch targets."""
         if not hasattr(self, "branches"):
             self.branches = {}
         self.branches[key] = (command, list(args))
     
-    def register_default(self, command: Type[commands2.CommandBase], *args: Any) -> "DispatcherBase":
+    def register_default(self, command: Type[commands2.Command], *args: Any) -> "DispatcherBase":
         """Sets the command to be dispatched to if none of the other branches match. Useful for elegant fallback, or 
         for setting a reasonable base behaviour.
         """

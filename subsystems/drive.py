@@ -1,4 +1,4 @@
-from commands2 import SubsystemBase
+from commands2 import Subsystem
 
 import rev
 from navx import AHRS as NavxGyro
@@ -6,7 +6,7 @@ from navx import AHRS as NavxGyro
 from wpilib.drive import MecanumDrive
 import wpilib
 
-class DriveSubsystem(SubsystemBase):
+class DriveSubsystem(Subsystem):
     front_left: rev.CANSparkMax
     front_right: rev.CANSparkMax
     rear_left: rev.CANSparkMax
