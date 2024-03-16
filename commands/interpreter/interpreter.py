@@ -171,7 +171,7 @@ class InterpretCommand(commands.Command):
 
     errors: list[Exception]
 
-    def __init__(self, requirements: list[commands.Subsystem] = [], parser: Callable[[str], Any] = typed_parser) -> None:
+    def __init__(self, requirements: list[commands.Subsystem] = [], parser: Callable[[list[str]], Any] = typed_parser) -> None:
         super().__init__()
 
         self.parser = parser
@@ -185,7 +185,8 @@ class InterpretCommand(commands.Command):
 
         self.errors = []
 
-        self.addRequirements(requirements)
+        for r in requirements:
+            self.addRequirements(r)
         self.reset()
     
     def register(self, keyword: str, command: Type[commands.Command], *args) -> None:
@@ -205,7 +206,8 @@ class InterpretCommand(commands.Command):
         #     raise TypeError("provided command must be in class form")
         self.instruction_set[keyword] = (command, args)
         reqs = [a for a in args if isinstance(a, commands.Subsystem)]
-        self.addRequirements(reqs)
+        for r in reqs:
+            self.addRequirements(r)
 
     def summarize_commands(self) -> str:
         out = []
